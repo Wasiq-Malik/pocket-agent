@@ -1,23 +1,4 @@
-interface KeyMapping {
-  key: string;
-  gbaButton: string;
-  label: string;
-}
-
 export default function GBAController() {
-  const keyMappings: KeyMapping[] = [
-    { key: '↑', gbaButton: 'Up', label: 'Arrow Up' },
-    { key: '↓', gbaButton: 'Down', label: 'Arrow Down' },
-    { key: '←', gbaButton: 'Left', label: 'Arrow Left' },
-    { key: '→', gbaButton: 'Right', label: 'Arrow Right' },
-    { key: 'Z', gbaButton: 'A', label: 'Z key' },
-    { key: 'X', gbaButton: 'B', label: 'X key' },
-    { key: 'Enter', gbaButton: 'START', label: 'Enter' },
-    { key: 'Shift', gbaButton: 'SELECT', label: 'Shift' },
-    { key: 'A', gbaButton: 'L', label: 'A key' },
-    { key: 'S', gbaButton: 'R', label: 'S key' },
-  ];
-
   return (
     <div className="w-full">
       {/* Keyboard Mappings Grid */}

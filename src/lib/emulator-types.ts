@@ -40,25 +40,29 @@ export interface MemoryReader {
 }
 
 export function createMemoryReader(emulator: mGBAEmulator): MemoryReader {
+  // Access Emscripten's heap through the emulator instance
+  // The HEAPU8 is available on the emulator object but not typed
+  const heap = (emulator as any).HEAPU8 as Uint8Array;
+  
   return {
     read8(address: number): number {
       // GBA memory starts at a specific offset in Emscripten's HEAP
       // We'll need to find the correct offset or use mGBA's internal methods
       // For now, accessing HEAPU8 directly
-      return emulator.HEAPU8[address] || 0;
+      return heap?.[address] || 0;
     },
     read16(address: number): number {
       // Read 16-bit little-endian
-      const byte1 = emulator.HEAPU8[address] || 0;
-      const byte2 = emulator.HEAPU8[address + 1] || 0;
+      const byte1 = heap?.[address] || 0;
+      const byte2 = heap?.[address + 1] || 0;
       return byte1 | (byte2 << 8);
     },
     read32(address: number): number {
       // Read 32-bit little-endian
-      const byte1 = emulator.HEAPU8[address] || 0;
-      const byte2 = emulator.HEAPU8[address + 1] || 0;
-      const byte3 = emulator.HEAPU8[address + 2] || 0;
-      const byte4 = emulator.HEAPU8[address + 3] || 0;
+      const byte1 = heap?.[address] || 0;
+      const byte2 = heap?.[address + 1] || 0;
+      const byte3 = heap?.[address + 2] || 0;
+      const byte4 = heap?.[address + 3] || 0;
       return byte1 | (byte2 << 8) | (byte3 << 16) | (byte4 << 24);
     },
   };
