@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { checkWebGPUSupport, getRecommendedBrowser, type WebGPUCheckResult } from './lib/webgpu-check'
+import GBAEmulator from './components/GBAEmulator'
 
 function App() {
   const [webGPUStatus, setWebGPUStatus] = useState<WebGPUCheckResult | null>(null)
@@ -148,11 +149,21 @@ function App() {
           )}
         </div>
         
+        {/* Emulator Test */}
+        {webGPUStatus?.supported && (
+          <div className="mt-6 bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 shadow-2xl">
+            <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
+              <span className="text-purple-400">🎮</span> GBA Emulator Test
+            </h2>
+            <GBAEmulator />
+          </div>
+        )}
+        
         {/* Footer */}
         <div className="text-center text-sm text-gray-500 mt-6 p-4 bg-gray-900/30 rounded-lg border border-gray-800">
           <p className="mb-2 flex items-center justify-center gap-2">
             <span className="text-blue-400">🔧</span>
-            <span>Next: Emulator Integration + WebLLM Agent Loop</span>
+            <span>Testing: Emulator Integration</span>
           </p>
           <p className="text-gray-600">
             Deploy target: <span className="text-blue-400 font-mono">pocketagent.vercel.app</span>

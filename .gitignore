@@ -27,3 +27,10 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# ROMs for testing (never commit copyrighted content)
+test-roms/
+*.gba
+*.gb
+*.gbc
+*.nds
