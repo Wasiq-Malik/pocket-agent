@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import mGBA, { type mGBAEmulator } from '@thenick775/mgba-wasm';
+import mGBA from '@thenick775/mgba-wasm';
 import { KEYBOARD_MAPPING } from '@/lib/emulator-types';
+import { useEmulator } from '@/contexts/EmulatorContext';
 
 interface GBAEmulatorProps {
   romPath?: string;
@@ -8,10 +9,10 @@ interface GBAEmulatorProps {
 
 export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Version (U) (V1.1).gba' }: GBAEmulatorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [emulator, setEmulator] = useState<mGBAEmulator | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { emulator, setEmulator, isPlaying, setIsPlaying, isFocused, setIsFocused } = useEmulator();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   // Initialize emulator
   useEffect(() => {
@@ -19,15 +20,8 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
       if (!canvasRef.current) return;
 
       try {
-        console.log('Initializing mGBA...');
         const module = await mGBA({ canvas: canvasRef.current });
-        
-        console.log('mGBA version:', module.version.projectName, module.version.projectVersion);
-        
-        // Initialize filesystem
         await module.FSInit();
-        console.log('Filesystem initialized');
-        
         setEmulator(module);
       } catch (err) {
         console.error('Failed to initialize emulator:', err);
@@ -39,7 +33,6 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
     initEmulator();
 
     return () => {
-      // Cleanup
       if (emulator) {
         try {
           emulator.quitMgba();
@@ -57,7 +50,6 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
 
       try {
         setIsLoading(true);
-        console.log('Fetching ROM from:', romPath);
         
         const response = await fetch(romPath);
         if (!response.ok) {
@@ -65,31 +57,20 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
         }
         
         const romData = await response.arrayBuffer();
-        console.log('ROM loaded, size:', romData.byteLength, 'bytes');
-        
-        // Create a File object from the ROM data
         const romFile = new File([romData], 'pokemon-ruby.gba', { type: 'application/octet-stream' });
         
-        // Upload ROM to emulator filesystem
         await new Promise<void>((resolve) => {
-          emulator.uploadRom(romFile, () => {
-            console.log('ROM uploaded to emulator filesystem');
-            resolve();
-          });
+          emulator.uploadRom(romFile, () => resolve());
         });
         
-        // Load the game
         const gamePath = emulator.filePaths().gamePath + '/pokemon-ruby.gba';
-        console.log('Loading game from:', gamePath);
-        
         const loaded = emulator.loadGame(gamePath);
         
         if (loaded) {
-          console.log('✅ Game loaded successfully!');
           setIsPlaying(true);
           setError(null);
         } else {
-          throw new Error('loadGame returned false');
+          throw new Error('Failed to load game');
         }
         
         setIsLoading(false);
@@ -105,38 +86,94 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
     }
   }, [emulator, romPath]);
 
-  // Keyboard controls
+  // Custom keyboard controls with our mapping
   useEffect(() => {
     if (!emulator || !isPlaying) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Always block if we're in an input field
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      // Block ALL keyboard events from reaching SDL when unfocused
+      if (!isFocused) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      // Handle our custom button mapping when focused
       const button = KEYBOARD_MAPPING[e.key];
       if (button) {
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         emulator.buttonPress(button);
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      // Always block if we're in an input field
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      // Block ALL keyboard events from reaching SDL when unfocused
+      if (!isFocused) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      // Handle our custom button mapping when focused
       const button = KEYBOARD_MAPPING[e.key];
       if (button) {
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         emulator.buttonUnpress(button);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    // Use capture phase to intercept BEFORE SDL handlers
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyUp, true);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
     };
-  }, [emulator, isPlaying]);
+  }, [emulator, isPlaying, isFocused]);
+
+  // Additional safeguard: disable SDL input when unfocused
+  useEffect(() => {
+    if (!emulator || !isPlaying) return;
+    emulator.toggleInput(isFocused);
+  }, [emulator, isPlaying, isFocused]);
+
+  // Handle container click to focus emulator
+  const handleContainerClick = () => {
+    setIsFocused(true);
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 w-full h-full">
-      <div className="relative bg-black rounded-lg overflow-hidden shadow-2xl border-4 border-gray-700" style={{ width: '100%', maxWidth: '1200px' }}>
+    <div 
+      ref={containerRef}
+      className="flex flex-col items-center justify-center gap-4 w-full h-full"
+      onClick={handleContainerClick}
+    >
+      <div 
+        className="relative bg-black rounded-lg overflow-hidden shadow-2xl border-4 border-gray-800" 
+        style={{ width: '100%', maxWidth: '1200px' }}
+      >
         <canvas
           ref={canvasRef}
           width={240}
