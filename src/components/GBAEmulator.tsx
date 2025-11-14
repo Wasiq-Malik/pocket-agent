@@ -135,14 +135,19 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
   }, [emulator, isPlaying]);
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative bg-black rounded-lg overflow-hidden shadow-2xl border-4 border-gray-700">
+    <div className="flex flex-col items-center justify-center gap-4 w-full h-full">
+      <div className="relative bg-black rounded-lg overflow-hidden shadow-2xl border-4 border-gray-700" style={{ width: '100%', maxWidth: '1200px' }}>
         <canvas
           ref={canvasRef}
           width={240}
           height={160}
-          className="w-full max-w-[720px] h-auto"
-          style={{ imageRendering: 'pixelated' }}
+          style={{ 
+            imageRendering: 'pixelated',
+            width: '100%',
+            height: 'auto',
+            aspectRatio: '3/2',
+            display: 'block'
+          }}
         />
         
         {isLoading && (
@@ -163,20 +168,6 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
           </div>
         )}
       </div>
-      
-      {isPlaying && (
-        <div className="text-center bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-          <p className="text-sm text-gray-400 mb-2">🎮 Controls</p>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs text-gray-300">
-            <div>Arrow Keys: D-Pad</div>
-            <div>Z: A Button</div>
-            <div>X: B Button</div>
-            <div>Enter: Start</div>
-            <div>Shift: Select</div>
-            <div>A/S: L/R</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
