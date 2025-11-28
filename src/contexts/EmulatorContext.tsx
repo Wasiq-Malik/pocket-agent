@@ -1,10 +1,9 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { mGBAEmulator } from '@thenick775/mgba-wasm';
 
 interface EmulatorContextType {
-  emulator: mGBAEmulator | null;
-  setEmulator: (emulator: mGBAEmulator | null) => void;
+  gba: any | null;
+  setGba: (gba: any | null) => void;
   isPlaying: boolean;
   setIsPlaying: (playing: boolean) => void;
   isFocused: boolean;
@@ -14,12 +13,12 @@ interface EmulatorContextType {
 const EmulatorContext = createContext<EmulatorContextType | null>(null);
 
 export function EmulatorProvider({ children }: { children: ReactNode }) {
-  const [emulator, setEmulator] = useState<mGBAEmulator | null>(null);
+  const [gba, setGba] = useState<any | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFocused, setIsFocused] = useState(true); // Start focused on emulator
 
   return (
-    <EmulatorContext.Provider value={{ emulator, setEmulator, isPlaying, setIsPlaying, isFocused, setIsFocused }}>
+    <EmulatorContext.Provider value={{ gba, setGba, isPlaying, setIsPlaying, isFocused, setIsFocused }}>
       {children}
     </EmulatorContext.Provider>
   );

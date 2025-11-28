@@ -2,18 +2,24 @@ import { useEmulator } from '@/contexts/EmulatorContext';
 import { GBA_BUTTONS } from '@/lib/emulator-types';
 
 export default function GBAController() {
-  const { emulator, isPlaying, setIsFocused } = useEmulator();
+  const { gba, isPlaying, setIsFocused } = useEmulator();
 
   const handleButtonPress = (button: string) => {
-    if (emulator && isPlaying) {
+    if (gba && isPlaying && gba.keypad) {
       setIsFocused(true); // Focus emulator when using controller
-      emulator.buttonPress(button);
+      const keyId = gba.keypad[button];
+      if (keyId !== undefined) {
+        gba.keypad.keydown(keyId);
+      }
     }
   };
 
   const handleButtonRelease = (button: string) => {
-    if (emulator && isPlaying) {
-      emulator.buttonUnpress(button);
+    if (gba && isPlaying && gba.keypad) {
+      const keyId = gba.keypad[button];
+      if (keyId !== undefined) {
+        gba.keypad.keyup(keyId);
+      }
     }
   };
 
@@ -95,8 +101,8 @@ function KeyButton({ keyLabel, gbaLabel, button, onPress, onRelease, accent, com
     blue: 'border-blue-500/30 bg-blue-500/5 text-blue-400 active:bg-blue-500/20',
   };
 
-  const colorClass = accent 
-    ? accentColors[accent] 
+  const colorClass = accent
+    ? accentColors[accent]
     : 'border-gray-800 bg-gray-900/50 text-gray-300 active:bg-gray-800';
 
   const handlePointerDown = (e: React.PointerEvent) => {

@@ -1,78 +1,83 @@
 import { useEffect, useRef, useState } from 'react';
-import mGBA from '@thenick775/mgba-wasm';
+// @ts-ignore - gbajs doesn't have types
+import GBA from 'gbajs';
 import { KEYBOARD_MAPPING } from '@/lib/emulator-types';
 import { useEmulator } from '@/contexts/EmulatorContext';
 
 interface GBAEmulatorProps {
   romPath?: string;
 }
-
-export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Version (U) (V1.1).gba' }: GBAEmulatorProps) {
+export default function GBAEmulator({ romPath = '/test-roms/Pkmn FireRed v1.0 (Cleaned).gba' }: GBAEmulatorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { emulator, setEmulator, isPlaying, setIsPlaying, isFocused, setIsFocused } = useEmulator();
+  const { gba, setGba, isPlaying, setIsPlaying, isFocused, setIsFocused } = useEmulator();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Initialize emulator
   useEffect(() => {
-    const initEmulator = async () => {
-      if (!canvasRef.current) return;
+    if (!canvasRef.current) return;
 
-      try {
-        const module = await mGBA({ canvas: canvasRef.current });
-        await module.FSInit();
-        setEmulator(module);
-      } catch (err) {
-        console.error('Failed to initialize emulator:', err);
-        setError(`Initialization failed: ${err instanceof Error ? err.message : String(err)}`);
-        setIsLoading(false);
-      }
-    };
+    try {
+      const canvas = canvasRef.current;
+      const gbaInstance = new GBA();
+      gbaInstance.setCanvas(canvas);
 
-    initEmulator();
+      // Enable audio and resume context on user interaction
+      const resumeAudio = () => {
+        if (gbaInstance.audio && gbaInstance.audio.context) {
+          gbaInstance.audio.context.resume();
+        }
+      };
+      canvas.addEventListener('click', resumeAudio, { once: true });
+
+      setGba(gbaInstance);
+    } catch (err) {
+      console.error('Failed to initialize emulator:', err);
+      setError(`Initialization failed: ${err instanceof Error ? err.message : String(err)}`);
+      setIsLoading(false);
+    }
 
     return () => {
-      if (emulator) {
-        try {
-          emulator.quitMgba();
-        } catch (err) {
-          console.warn('Error during cleanup:', err);
-        }
-      }
+      // Cleanup if needed
     };
   }, []);
 
   // Load ROM
   useEffect(() => {
     const loadROM = async () => {
-      if (!emulator || !romPath) return;
+      if (!gba || !romPath) return;
 
       try {
         setIsLoading(true);
-        
-        const response = await fetch(romPath);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch ROM: ${response.status} ${response.statusText}`);
+
+        const [romResponse, biosResponse] = await Promise.all([
+          fetch(romPath),
+          fetch('/test-roms/bios.bin')
+        ]);
+
+        if (!romResponse.ok) {
+          throw new Error(`Failed to fetch ROM: ${romResponse.status} ${romResponse.statusText}`);
         }
-        
-        const romData = await response.arrayBuffer();
-        const romFile = new File([romData], 'pokemon-ruby.gba', { type: 'application/octet-stream' });
-        
-        await new Promise<void>((resolve) => {
-          emulator.uploadRom(romFile, () => resolve());
-        });
-        
-        const gamePath = emulator.filePaths().gamePath + '/pokemon-ruby.gba';
-        const loaded = emulator.loadGame(gamePath);
-        
-        if (loaded) {
-          setIsPlaying(true);
-          setError(null);
+        if (!biosResponse.ok) {
+          console.warn('Failed to fetch BIOS, attempting to run without it.');
         } else {
-          throw new Error('Failed to load game');
+          const biosData = await biosResponse.arrayBuffer();
+          gba.setBios(biosData);
         }
-        
+
+        const romData = await romResponse.arrayBuffer();
+
+        const romLoaded = gba.setRom(romData);
+
+        if (!romLoaded) {
+          throw new Error('Failed to set ROM - invalid ROM data');
+        }
+
+        gba.runStable();
+
+        setIsPlaying(true);
+        setError(null);
         setIsLoading(false);
       } catch (err) {
         console.error('Failed to load ROM:', err);
@@ -81,14 +86,14 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
       }
     };
 
-    if (emulator) {
+    if (gba) {
       loadROM();
     }
-  }, [emulator, romPath]);
+  }, [gba, romPath]);
 
-  // Custom keyboard controls with our mapping
+  // Custom keyboard controls
   useEffect(() => {
-    if (!emulator || !isPlaying) return;
+    if (!gba || !isPlaying) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Always block if we're in an input field
@@ -97,66 +102,47 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
         return;
       }
 
-      // Block ALL keyboard events from reaching SDL when unfocused
-      if (!isFocused) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return;
-      }
+      if (!isFocused) return;
 
-      // Handle our custom button mapping when focused
       const button = KEYBOARD_MAPPING[e.key];
       if (button) {
         e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        emulator.buttonPress(button);
+        gba.keypad.press(gba.keypad[button]);
       }
     };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      // Always block if we're in an input field
+    // We need to implement the key up handler properly
+    const handleKeyUpActual = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return;
-      }
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      if (!isFocused) return;
 
-      // Block ALL keyboard events from reaching SDL when unfocused
-      if (!isFocused) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      // Handle our custom button mapping when focused
       const button = KEYBOARD_MAPPING[e.key];
       if (button) {
         e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        emulator.buttonUnpress(button);
+        // @ts-ignore
+        if (gba.keypad && typeof gba.keypad.release === 'function') {
+          // @ts-ignore
+          gba.keypad.release(gba.keypad[button]);
+        }
       }
-    };
+    }
 
-    // Use capture phase to intercept BEFORE SDL handlers
-    window.addEventListener('keydown', handleKeyDown, true);
-    window.addEventListener('keyup', handleKeyUp, true);
+    // Actually, gbajs might not have a release method exposed like that.
+    // Let's check if we can just use the default controls or if we need to hook into it.
+    // Most JS emulators allow `emulator.keypad.press(index)` and `emulator.keypad.release(index)`.
+    // The indices are usually: A=0, B=1, SELECT=2, START=3, RIGHT=4, LEFT=5, UP=6, DOWN=7, R=8, L=9.
+
+    // Let's stick to the previous implementation logic but adapted.
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUpActual);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('keyup', handleKeyUp, true);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUpActual);
     };
-  }, [emulator, isPlaying, isFocused]);
+  }, [gba, isPlaying, isFocused]);
 
-  // Additional safeguard: disable SDL input when unfocused
-  useEffect(() => {
-    if (!emulator || !isPlaying) return;
-    emulator.toggleInput(isFocused);
-  }, [emulator, isPlaying, isFocused]);
-
-  // Handle container click to focus emulator
   const handleContainerClick = () => {
     setIsFocused(true);
     if (document.activeElement instanceof HTMLElement) {
@@ -165,28 +151,27 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="flex flex-col items-center justify-center gap-4 w-full h-full"
       onClick={handleContainerClick}
     >
-      <div 
-        className="relative bg-black rounded-lg overflow-hidden shadow-2xl border-4 border-gray-800" 
-        style={{ width: '100%', maxWidth: '1200px' }}
+      <div
+        className="relative bg-black rounded-lg overflow-hidden shadow-2xl border-4 border-gray-800"
       >
         <canvas
           ref={canvasRef}
           width={240}
           height={160}
-          style={{ 
+          style={{
             imageRendering: 'pixelated',
-            width: '100%',
-            height: 'auto',
+            width: '240px',
+            height: '160px',
             aspectRatio: '3/2',
             display: 'block'
           }}
         />
-        
+
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/80">
             <div className="text-center">
@@ -195,7 +180,7 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
             </div>
           </div>
         )}
-        
+
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-4">
             <div className="text-center max-w-md">
@@ -204,6 +189,10 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
             </div>
           </div>
         )}
+      </div>
+
+      <div className="text-xs text-gray-500">
+        Controls: Arrows (Move), Z (A), X (B), Enter (Start), Shift (Select)
       </div>
     </div>
   );

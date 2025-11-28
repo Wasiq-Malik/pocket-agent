@@ -1,0 +1,67 @@
+diff --git a/node_modules/gbajs/js/arm.js b/node_modules/gbajs/js/arm.js
+index cf06ed6..2ac938e 100644
+--- a/node_modules/gbajs/js/arm.js
++++ b/node_modules/gbajs/js/arm.js
+@@ -46,7 +46,7 @@ var ARMCoreArm = function (cpu) {
+ 		function(rn, offset, condOp) {
+ 			var gprs = cpu.gprs;
+ 			var address = function() {
+-				return addr = gprs[rn] - offset;
++				return gprs[rn] - offset;
+ 			};
+ 			address.writesPC = false;
+ 			return address;
+@@ -73,7 +73,7 @@ var ARMCoreArm = function (cpu) {
+ 		function(rn, offset, condOp) {
+ 			var gprs = cpu.gprs;
+ 			var address = function() {
+-				return addr = gprs[rn] + offset;
++				return gprs[rn] + offset;
+ 			};
+ 			address.writesPC = false;
+ 			return address;
+diff --git a/node_modules/gbajs/js/audio.js b/node_modules/gbajs/js/audio.js
+index e98dcd7..2cc7f65 100644
+--- a/node_modules/gbajs/js/audio.js
++++ b/node_modules/gbajs/js/audio.js
+@@ -1,5 +1,5 @@
+ function GameBoyAdvanceAudio() {
+-	var AudioContext = null; /* window.AudioContext || window.webkitAudioContext; */
++	var AudioContext = window.AudioContext || window.webkitAudioContext; /* window.AudioContext || window.webkitAudioContext; */
+ 	if (AudioContext) {
+ 		var self = this;
+ 		this.context = new AudioContext();
+diff --git a/node_modules/gbajs/js/video.js b/node_modules/gbajs/js/video.js
+index 0b5ec9b..895c32b 100644
+--- a/node_modules/gbajs/js/video.js
++++ b/node_modules/gbajs/js/video.js
+@@ -177,7 +177,7 @@ GameBoyAdvanceVideo.prototype.readDisplayStat = function() {
+ };
+ 
+ GameBoyAdvanceVideo.prototype.finishDraw = function(pixelData) {
+-	// this.context.putImageData(pixelData, 0, 0);
++	this.context.putImageData(pixelData, 0, 0);
+ 	this.drawCallback();
+ };
+ 
+diff --git a/node_modules/gbajs/js/video/software.js b/node_modules/gbajs/js/video/software.js
+index d16d8ab..8ad6cd3 100644
+--- a/node_modules/gbajs/js/video/software.js
++++ b/node_modules/gbajs/js/video/software.js
+@@ -473,6 +473,7 @@ GameBoyAdvanceOBJ.prototype.drawScanlineAffine = function(backing, y, yOff, star
+ 	var offset;
+ 	var mask = this.mode | video.target2[video.LAYER_OBJ] | (this.priority << 1);
+ 	if (this.mode == 0x10) {
++        var tileRow;
+ 		mask |= video.TARGET1_MASK;
+ 	}
+ 	if (video.blendMode == 1 && video.alphaEnabled) {
+@@ -814,7 +815,7 @@ GameBoyAdvanceSoftwareRenderer.prototype.clear = function(mmu) {
+ 		this.drawBackdrop
+ 	];
+ 
+-	this,objwinActive = false;
++	this.objwinActive = false;
+ 	this.alphaEnabled = false;
+ 
+ 	this.scanline = {
