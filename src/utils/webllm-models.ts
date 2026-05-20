@@ -6,6 +6,7 @@ export const WEBLLM_MODELS = {
   QWEN_3_5_2B_FP16: 'Qwen3.5-2B-q4f16_1-MLC',
   QWEN_3_5_4B_FP16: 'Qwen3.5-4B-q4f16_1-MLC',
   QWEN_3_5_9B_FP16: 'Qwen3.5-9B-q4f16_1-MLC',
+  PHI_3_5_VISION_FP16: 'Phi-3.5-vision-instruct-q4f16_1-MLC',
 } as const;
 
 export type WebLLMModelId = typeof WEBLLM_MODELS[keyof typeof WEBLLM_MODELS];
@@ -18,6 +19,7 @@ export interface ModelMetadata {
   hardwareTier: 'Low VRAM' | 'Medium VRAM' | 'High VRAM';
   compatibility: string;
   description: string;
+  isVision?: boolean;
 }
 
 // Model info for UI display
@@ -57,5 +59,15 @@ export const MODEL_INFO: Record<WebLLMModelId, ModelMetadata> = {
     hardwareTier: 'High VRAM',
     compatibility: 'Apple Silicon FP16 Optimized',
     description: 'Large dense reasoning model. Offers highest intelligence and complex agentic planning capabilities for gameplay.',
+  },
+  'Phi-3.5-vision-instruct-q4f16_1-MLC': {
+    name: 'Phi 3.5 Vision Instruct (VLM)',
+    size: '~2.2GB',
+    vram: '~3.9GB',
+    family: 'Phi 3.5',
+    hardwareTier: 'Medium VRAM',
+    compatibility: 'Apple Silicon FP16 Optimized',
+    description: 'Microsoft\'s advanced multimodal vision-language model. Supports parsing GBA emulator screenshots and visual-spatial reasoning.',
+    isVision: true,
   },
 };

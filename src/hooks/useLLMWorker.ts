@@ -47,6 +47,7 @@ function parseThinkingTags(text: string): { thinking: string; content: string; i
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  screenshotUrl?: string; // Base64 screenshot URL if any
   thinking?: string; // Extracted thinking content
   isThinking?: boolean; // Currently in thinking mode
   timestamp: number;
@@ -161,12 +162,13 @@ export function useLLMWorker() {
     workerRef.current?.postMessage({ type: 'load', modelId });
   }, []);
 
-  const sendMessage = useCallback((content: string) => {
+  const sendMessage = useCallback((content: string, screenshotUrl?: string) => {
     if (!isReady || isGenerating) return;
 
     const userMessage: ChatMessage = {
       role: 'user',
       content,
+      screenshotUrl,
       timestamp: Date.now(),
     };
 
@@ -185,6 +187,16 @@ export function useLLMWorker() {
         reconstructedContent += msg.content;
         return { role: 'assistant' as const, content: reconstructedContent };
       }
+      
+      if (msg.screenshotUrl) {
+        return {
+          role: 'user' as const,
+          content: [
+            { type: 'text' as const, text: msg.content },
+            { type: 'image_url' as const, image_url: { url: msg.screenshotUrl } }
+          ]
+        };
+      }
       return { role: 'user' as const, content: msg.content };
     });
 
@@ -193,7 +205,18 @@ export function useLLMWorker() {
       content: POKEMON_AGENT_SYSTEM_PROMPT,
     };
 
-    const allMessages = [systemMessage, ...history, { role: 'user' as const, content }];
+    const nextMessageContent = screenshotUrl 
+      ? [
+          { type: 'text' as const, text: content },
+          { type: 'image_url' as const, image_url: { url: screenshotUrl } }
+        ]
+      : content;
+
+    const allMessages = [
+      systemMessage, 
+      ...history, 
+      { role: 'user' as const, content: nextMessageContent }
+    ];
 
     workerRef.current?.postMessage({
       type: 'chat',

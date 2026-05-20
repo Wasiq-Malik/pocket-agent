@@ -9,6 +9,8 @@ interface EmulatorContextType {
   setIsPlaying: (playing: boolean) => void;
   isFocused: boolean;
   setIsFocused: (focused: boolean) => void;
+  canvasElement: HTMLCanvasElement | null;
+  setCanvasElement: (canvas: HTMLCanvasElement | null) => void;
 }
 
 const EmulatorContext = createContext<EmulatorContextType | null>(null);
@@ -17,9 +19,19 @@ export function EmulatorProvider({ children }: { children: ReactNode }) {
   const [emulator, setEmulator] = useState<mGBAEmulator | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFocused, setIsFocused] = useState(true); // Start focused on emulator
+  const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null);
 
   return (
-    <EmulatorContext.Provider value={{ emulator, setEmulator, isPlaying, setIsPlaying, isFocused, setIsFocused }}>
+    <EmulatorContext.Provider value={{ 
+      emulator, 
+      setEmulator, 
+      isPlaying, 
+      setIsPlaying, 
+      isFocused, 
+      setIsFocused,
+      canvasElement,
+      setCanvasElement
+    }}>
       {children}
     </EmulatorContext.Provider>
   );

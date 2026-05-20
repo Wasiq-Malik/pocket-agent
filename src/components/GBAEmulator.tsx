@@ -7,12 +7,22 @@ interface GBAEmulatorProps {
   romPath?: string;
 }
 
-export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Version (U) (V1.1).gba' }: GBAEmulatorProps) {
+export default function GBAEmulator({ romPath = '/test-roms/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba' }: GBAEmulatorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { emulator, setEmulator, isPlaying, setIsPlaying, isFocused, setIsFocused } = useEmulator();
+  const { emulator, setEmulator, isPlaying, setIsPlaying, isFocused, setIsFocused, setCanvasElement } = useEmulator();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Register canvas in EmulatorContext
+  useEffect(() => {
+    if (canvasRef.current) {
+      setCanvasElement(canvasRef.current);
+    }
+    return () => {
+      setCanvasElement(null);
+    };
+  }, [setCanvasElement]);
 
   // Initialize emulator
   useEffect(() => {
@@ -20,6 +30,18 @@ export default function GBAEmulator({ romPath = '/test-roms/Pokemon - Ruby Versi
       if (!canvasRef.current) return;
 
       try {
+        // Enforce preserveDrawingBuffer: true on WebGL context to allow capturing screenshots outside the render loop
+        const canvas = canvasRef.current;
+        const originalGetContext = canvas.getContext;
+        canvas.getContext = function (this: any, type: string, attributes?: any) {
+          if (type.includes('webgl') || type.includes('experimental-webgl')) {
+            const attrs = attributes || {};
+            attrs.preserveDrawingBuffer = true;
+            return (originalGetContext as any).call(this, type, attrs);
+          }
+          return (originalGetContext as any).call(this, type, attributes);
+        } as any;
+
         const module = await mGBA({ canvas: canvasRef.current });
         await module.FSInit();
         setEmulator(module);

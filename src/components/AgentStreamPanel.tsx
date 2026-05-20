@@ -18,7 +18,7 @@ export default function AgentStreamPanel({ modelId = 'Qwen3.5-4B-q4f16_1-MLC' }:
   const inputRef = useRef<HTMLInputElement>(null);
   
   const { isLoading, isReady, progress, error, messages, isGenerating, loadModel, sendMessage, resetChat } = useLLMWorker();
-  const { setIsFocused } = useEmulator();
+  const { setIsFocused, canvasElement } = useEmulator();
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -30,7 +30,18 @@ export default function AgentStreamPanel({ modelId = 'Qwen3.5-4B-q4f16_1-MLC' }:
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isGenerating) {
-      sendMessage(input.trim());
+      let screenshotUrl: string | undefined;
+
+      // Auto-capture screenshot if vision model is active and canvas exists
+      if (selectedModelInfo?.isVision && canvasElement) {
+        try {
+          screenshotUrl = canvasElement.toDataURL('image/png');
+        } catch (err) {
+          console.error('Failed to capture emulator canvas:', err);
+        }
+      }
+
+      sendMessage(input.trim(), screenshotUrl);
       setInput('');
     }
   };
@@ -218,6 +229,20 @@ export default function AgentStreamPanel({ modelId = 'Qwen3.5-4B-q4f16_1-MLC' }:
                         {new Date(msg.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
+
+                    {/* Multimodal screenshot attachment */}
+                    {msg.screenshotUrl && (
+                      <div className="mb-2 relative rounded overflow-hidden border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] group max-w-[200px]">
+                        <img 
+                          src={msg.screenshotUrl} 
+                          alt="Captured game frame" 
+                          className="w-full h-auto aspect-[3/2] object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-1">
+                          <span className="text-[8px] font-mono text-cyan-400">Captured Game Screen</span>
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Thinking section - show immediately when <think> appears */}
                     {(msg.thinking || msg.isThinking) && (
@@ -265,6 +290,12 @@ export default function AgentStreamPanel({ modelId = 'Qwen3.5-4B-q4f16_1-MLC' }:
                 {isGenerating ? '...' : 'Send'}
               </button>
             </form>
+            {selectedModelInfo?.isVision && (
+              <div className="mt-1.5 flex items-center gap-1 text-[9px] font-mono text-cyan-400/80 animate-pulse">
+                <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+                <span>📸 VISION TELEMETRY: AUTO-CAPTURING GBA SCREEN</span>
+              </div>
+            )}
             {messages.length > 0 && (
               <button
                 onClick={resetChat}

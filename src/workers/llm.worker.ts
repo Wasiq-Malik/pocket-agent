@@ -2,10 +2,13 @@ import { CreateMLCEngine, MLCEngine, prebuiltAppConfig } from '@mlc-ai/web-llm';
 
 let engine: MLCEngine | null = null;
 
-// Message types from main thread
+type ChatCompletionMessageContentPart = 
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
 interface ChatCompletionMessage {
   role: 'user' | 'assistant' | 'system';
-  content: string;
+  content: string | ChatCompletionMessageContentPart[];
 }
 
 interface LoadModelMessage {
@@ -97,7 +100,7 @@ async function chat(
 
   try {
     const stream = await engine.chat.completions.create({
-      messages,
+      messages: messages as any,
       temperature,
       top_p,
       max_tokens,
