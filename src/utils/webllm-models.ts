@@ -1,94 +1,61 @@
-// Common WebLLM model IDs
-// These are from the prebuiltAppConfig in @mlc-ai/web-llm
-// Full list: https://github.com/mlc-ai/web-llm/issues/683
+// Curated list of Qwen 3.5 models supported by WebLLM v0.2.83
+// Optimized specifically for modern GPUs and Apple Silicon (FP16).
 
 export const WEBLLM_MODELS = {
-  // DeepSeek-R1 Distilled models (reasoning capabilities)
-  DEEPSEEK_R1_LLAMA_8B_Q4: 'DeepSeek-R1-Distill-Llama-8B-q4f32_1-MLC',
-  DEEPSEEK_R1_LLAMA_8B_Q4F16: 'DeepSeek-R1-Distill-Llama-8B-q4f16_1-MLC',
-  DEEPSEEK_R1_QWEN_7B_Q4: 'DeepSeek-R1-Distill-Qwen-7B-q4f32_1-MLC',
-  DEEPSEEK_R1_QWEN_7B_Q4F16: 'DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC',
-  
-  // Llama 3.1 models (recommended for general use)
-  LLAMA_3_1_8B_Q4: 'Llama-3.1-8B-Instruct-q4f32_1-MLC',
-  LLAMA_3_1_8B_Q4F16: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-  
-  // Llama 3 models
-  LLAMA_3_8B_Q4: 'Llama-3-8B-Instruct-q4f32_1-MLC',
-  LLAMA_3_8B_Q4F16: 'Llama-3-8B-Instruct-q4f16_1-MLC',
-  
-  // Smaller models (faster, less capable)
-  PHI_3_MINI: 'Phi-3-mini-4k-instruct-q4f16_1-MLC',
-  QWEN_2_1_5B: 'Qwen2-1.5B-Instruct-q4f16_1-MLC',
-  GEMMA_2B: 'gemma-2b-it-q4f16_1-MLC',
-  
-  // Mistral models
-  MISTRAL_7B: 'Mistral-7B-Instruct-v0.3-q4f16_1-MLC',
+  QWEN_3_5_0_8B_FP16: 'Qwen3.5-0.8B-q4f16_1-MLC',
+  QWEN_3_5_2B_FP16: 'Qwen3.5-2B-q4f16_1-MLC',
+  QWEN_3_5_4B_FP16: 'Qwen3.5-4B-q4f16_1-MLC',
+  QWEN_3_5_9B_FP16: 'Qwen3.5-9B-q4f16_1-MLC',
 } as const;
 
 export type WebLLMModelId = typeof WEBLLM_MODELS[keyof typeof WEBLLM_MODELS];
 
+export interface ModelMetadata {
+  name: string;
+  size: string;
+  vram: string;
+  family: string;
+  hardwareTier: 'Low VRAM' | 'Medium VRAM' | 'High VRAM';
+  compatibility: string;
+  description: string;
+}
+
 // Model info for UI display
-export const MODEL_INFO: Record<WebLLMModelId, { name: string; size: string; vram: string }> = {
-  'DeepSeek-R1-Distill-Llama-8B-q4f32_1-MLC': {
-    name: 'DeepSeek-R1 Llama 8B (Q4)',
-    size: '~4.8GB',
-    vram: '~6.1GB',
+export const MODEL_INFO: Record<WebLLMModelId, ModelMetadata> = {
+  'Qwen3.5-0.8B-q4f16_1-MLC': {
+    name: 'Qwen 3.5 0.8B Instruct (Micro)',
+    size: '~0.6GB',
+    vram: '~0.9GB',
+    family: 'Qwen 3.5',
+    hardwareTier: 'Low VRAM',
+    compatibility: 'Apple Silicon FP16 Optimized',
+    description: 'Ultra-small model optimized for instant loads and maximum frame rates. Ideal for fast gameplay testing loops.',
   },
-  'DeepSeek-R1-Distill-Llama-8B-q4f16_1-MLC': {
-    name: 'DeepSeek-R1 Llama 8B (Q4F16)',
-    size: '~4.3GB',
-    vram: '~5GB',
+  'Qwen3.5-2B-q4f16_1-MLC': {
+    name: 'Qwen 3.5 2B Instruct (Small)',
+    size: '~1.3GB',
+    vram: '~2.0GB',
+    family: 'Qwen 3.5',
+    hardwareTier: 'Low VRAM',
+    compatibility: 'Apple Silicon FP16 Optimized',
+    description: 'Extremely fast Qwen 3.5 model. Supports native thinking mode with low latency. Perfect for quick logic iterations.',
   },
-  'DeepSeek-R1-Distill-Qwen-7B-q4f32_1-MLC': {
-    name: 'DeepSeek-R1 Qwen 7B (Q4)',
-    size: '~4.7GB',
-    vram: '~5.9GB',
+  'Qwen3.5-4B-q4f16_1-MLC': {
+    name: 'Qwen 3.5 4B Instruct (Medium)',
+    size: '~2.5GB',
+    vram: '~3.5GB',
+    family: 'Qwen 3.5',
+    hardwareTier: 'Medium VRAM',
+    compatibility: 'Apple Silicon FP16 Optimized',
+    description: 'Alibaba\'s new highly efficient reasoning model. Great logical progression without the heavy VRAM load of 9B.',
   },
-  'DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC': {
-    name: 'DeepSeek-R1 Qwen 7B (Q4F16)',
-    size: '~4.2GB',
-    vram: '~5.1GB',
-  },
-  'Llama-3.1-8B-Instruct-q4f32_1-MLC': {
-    name: 'Llama 3.1 8B (Q4)',
-    size: '~4.5GB',
-    vram: '~6.1GB',
-  },
-  'Llama-3.1-8B-Instruct-q4f16_1-MLC': {
-    name: 'Llama 3.1 8B (Q4F16)',
-    size: '~4.0GB',
-    vram: '~5GB',
-  },
-  'Llama-3-8B-Instruct-q4f32_1-MLC': {
-    name: 'Llama 3 8B (Q4)',
-    size: '~4.5GB',
-    vram: '~6.1GB',
-  },
-  'Llama-3-8B-Instruct-q4f16_1-MLC': {
-    name: 'Llama 3 8B (Q4F16)',
-    size: '~4.0GB',
-    vram: '~5GB',
-  },
-  'Phi-3-mini-4k-instruct-q4f16_1-MLC': {
-    name: 'Phi 3 Mini',
-    size: '~2.2GB',
-    vram: '~3.7GB',
-  },
-  'Qwen2-1.5B-Instruct-q4f16_1-MLC': {
-    name: 'Qwen2 1.5B',
-    size: '~0.9GB',
-    vram: '~1.6GB',
-  },
-  'gemma-2b-it-q4f16_1-MLC': {
-    name: 'Gemma 2B',
-    size: '~1.4GB',
-    vram: '~1.5GB',
-  },
-  'Mistral-7B-Instruct-v0.3-q4f16_1-MLC': {
-    name: 'Mistral 7B',
-    size: '~4.1GB',
-    vram: '~4.5GB',
+  'Qwen3.5-9B-q4f16_1-MLC': {
+    name: 'Qwen 3.5 9B Instruct (Large)',
+    size: '~5.1GB',
+    vram: '~6.3GB',
+    family: 'Qwen 3.5',
+    hardwareTier: 'High VRAM',
+    compatibility: 'Apple Silicon FP16 Optimized',
+    description: 'Large dense reasoning model. Offers highest intelligence and complex agentic planning capabilities for gameplay.',
   },
 };
-

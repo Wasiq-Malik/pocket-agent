@@ -52,6 +52,12 @@ interface ChatMessage {
   timestamp: number;
 }
 
+const POKEMON_AGENT_SYSTEM_PROMPT = `You are PocketAgent, an advanced AI gaming agent playing Pokémon FireRed on a GBA emulator via WebGPU.
+
+Your goal is to autonomously explore, battle, train Pokémon, and defeat Gym Leaders. You are direct, analytical, and highly structured.
+Keep your final output extremely brief, focused, and action-oriented. Do NOT write verbose introductory or concluding statements (e.g., "I can't physically play the game"). Keep chat interactions short and direct.
+You are the player agent physically executing moves in the game. You are the AI controller.`;
+
 export function useLLMWorker() {
   const workerRef = useRef<Worker | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -83,6 +89,13 @@ export function useLLMWorker() {
           setIsLoading(false);
           setIsReady(true);
           setProgress(null);
+          setMessages([
+            {
+              role: 'assistant',
+              content: 'PocketAgent v1.0.0 Online.\nWebGPU compute engine loaded successfully. Memory mapping hooks established.\n\nReady to play Pokémon. Send a command to begin.',
+              timestamp: Date.now(),
+            }
+          ]);
           break;
 
         case 'stream':
@@ -144,6 +157,7 @@ export function useLLMWorker() {
   const loadModel = useCallback((modelId: string) => {
     setIsLoading(true);
     setError(null);
+    setMessages([]);
     workerRef.current?.postMessage({ type: 'load', modelId });
   }, []);
 
@@ -160,15 +174,44 @@ export function useLLMWorker() {
     setIsGenerating(true);
     setError(null);
 
+    // Reconstruct full conversation history for WebLLM
+    // We restore <think> blocks for assistant answers so reasoning models maintain their mental state.
+    const history = messages.map((msg) => {
+      if (msg.role === 'assistant') {
+        let reconstructedContent = '';
+        if (msg.thinking) {
+          reconstructedContent += `<think>\n${msg.thinking}\n</think>\n`;
+        }
+        reconstructedContent += msg.content;
+        return { role: 'assistant' as const, content: reconstructedContent };
+      }
+      return { role: 'user' as const, content: msg.content };
+    });
+
+    const systemMessage = {
+      role: 'system' as const,
+      content: POKEMON_AGENT_SYSTEM_PROMPT,
+    };
+
+    const allMessages = [systemMessage, ...history, { role: 'user' as const, content }];
+
     workerRef.current?.postMessage({
       type: 'chat',
-      prompt: content,
-      temperature: 0.7,
+      messages: allMessages,
+      temperature: 0.6,
+      top_p: 0.95,
+      max_tokens: 2048,
     });
-  }, [isReady, isGenerating]);
+  }, [isReady, isGenerating, messages]);
 
   const resetChat = useCallback(() => {
-    setMessages([]);
+    setMessages([
+      {
+        role: 'assistant',
+        content: 'PocketAgent v1.0.0 Online.\nWebGPU compute engine loaded successfully. Memory mapping hooks established.\n\nReady to play Pokémon. Send a command to begin.',
+        timestamp: Date.now(),
+      }
+    ]);
     workerRef.current?.postMessage({ type: 'reset' });
   }, []);
 

@@ -1,19 +1,22 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useState, useRef, useEffect } from 'react';
 import { useLLMWorker } from '@/hooks/useLLMWorker';
 import { useEmulator } from '@/contexts/EmulatorContext';
+import { WEBLLM_MODELS, MODEL_INFO, type WebLLMModelId } from '@/utils/webllm-models';
 
 interface AgentStreamPanelProps {
   modelId?: string;
 }
 
-export default function AgentStreamPanel({ modelId = 'DeepSeek-R1-Distill-Llama-8B-q4f32_1-MLC' }: AgentStreamPanelProps) {
+export default function AgentStreamPanel({ modelId = 'Qwen3.5-4B-q4f16_1-MLC' }: AgentStreamPanelProps) {
   const [input, setInput] = useState('');
+  const [selectedModel, setSelectedModel] = useState<WebLLMModelId>(modelId as WebLLMModelId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
   const { isLoading, isReady, progress, error, messages, isGenerating, loadModel, sendMessage, resetChat } = useLLMWorker();
   const { setIsFocused } = useEmulator();
 
@@ -33,20 +36,22 @@ export default function AgentStreamPanel({ modelId = 'DeepSeek-R1-Distill-Llama-
   };
 
   const handleLoadModel = () => {
-    loadModel(modelId);
+    loadModel(selectedModel);
   };
 
   const handleInputFocus = () => {
     setIsFocused(false);
   };
 
+  const selectedModelInfo = MODEL_INFO[selectedModel];
+
   return (
     <Card className="h-full flex flex-col bg-black border-gray-900">
-      <CardHeader className="pb-3 border-b border-gray-900">
+      <CardHeader className="pb-3 border-b border-gray-900 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-300">
             <span className="text-base">🤖</span>
-            <span>LLM Chat</span>
+            <span>LLM Telemetry</span>
           </CardTitle>
           <Badge 
             variant="outline" 
@@ -58,13 +63,13 @@ export default function AgentStreamPanel({ modelId = 'DeepSeek-R1-Distill-Llama-
           >
             {isReady ? (
               <span className="flex items-center gap-1.5">
-                <span className="w-1 h-1 bg-green-500 rounded-full"></span>
-                Ready
+                <span className="w-1 h-1 bg-green-500 rounded-full animate-ping"></span>
+                Online
               </span>
             ) : isLoading ? (
               <span className="flex items-center gap-1.5">
                 <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse"></span>
-                Loading
+                Syncing
               </span>
             ) : (
               <span className="flex items-center gap-1.5">
@@ -74,24 +79,57 @@ export default function AgentStreamPanel({ modelId = 'DeepSeek-R1-Distill-Llama-
             )}
           </Badge>
         </div>
-        <CardDescription className="text-gray-600 text-xs mt-0.5">
-          Test {modelId}
-        </CardDescription>
+        
+        {/* Futuristic Model Select Dropdown */}
+        <div className="mt-3">
+          <label className="text-[9px] text-gray-600 font-mono uppercase tracking-wider block mb-1">
+            Active Compute Engine
+          </label>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value as WebLLMModelId)}
+            disabled={isLoading || isReady}
+            className="w-full bg-gray-950 border border-gray-900 hover:border-gray-800 rounded-md px-2 py-1.5 text-xs text-gray-300 font-mono focus:outline-none focus:border-cyan-500/50 cursor-pointer disabled:opacity-50 transition-colors"
+          >
+            {Object.values(WEBLLM_MODELS).map((value) => {
+              const info = MODEL_INFO[value];
+              return (
+                <option key={value} value={value}>
+                  {info?.name || value}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        {/* Live Minimap Specs */}
+        {selectedModelInfo && (
+          <div className="mt-2 bg-gray-950/40 border border-gray-900/60 rounded p-1.5 text-[9px] text-gray-500 space-y-0.5 font-mono">
+            <div className="flex justify-between">
+              <span>DISK SIZE / VRAM:</span>
+              <span className="text-gray-400">{selectedModelInfo.size} / {selectedModelInfo.vram}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>COMPATIBILITY:</span>
+              <span className="text-cyan-500/80">{selectedModelInfo.compatibility}</span>
+            </div>
+          </div>
+        )}
       </CardHeader>
       <Separator className="bg-gray-900" />
       
       {/* Loading/Progress Section */}
       {isLoading && progress && (
         <>
-          <div className="p-3 border-b border-gray-900">
+          <div className="p-3 border-b border-gray-900 bg-cyan-500/5 flex-shrink-0">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">{progress.text}</span>
-                <span className="text-xs text-gray-600">{Math.round(progress.progress * 100)}%</span>
+                <span className="text-[10px] font-mono text-cyan-400">{progress.text}</span>
+                <span className="text-[10px] font-mono text-cyan-600">{Math.round(progress.progress * 100)}%</span>
               </div>
-              <div className="w-full bg-gray-900 rounded-full h-1.5">
+              <div className="w-full bg-gray-950 border border-gray-900 rounded-full h-1.5 overflow-hidden">
                 <div 
-                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                  className="bg-cyan-500 h-1.5 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(6,182,212,0.5)]"
                   style={{ width: `${progress.progress * 100}%` }}
                 />
               </div>
@@ -104,7 +142,7 @@ export default function AgentStreamPanel({ modelId = 'DeepSeek-R1-Distill-Llama-
       {/* Error Section */}
       {error && (
         <>
-          <div className="p-3 border-b border-gray-900 bg-red-500/5">
+          <div className="p-3 border-b border-gray-900 bg-red-500/5 flex-shrink-0">
             <p className="text-xs text-red-400">{error}</p>
           </div>
           <Separator className="bg-gray-900" />
@@ -116,18 +154,40 @@ export default function AgentStreamPanel({ modelId = 'DeepSeek-R1-Distill-Llama-
         <ScrollArea className="h-full">
           <div ref={scrollRef} className="p-4 space-y-3">
             {!isReady && !isLoading ? (
-              <div className="flex flex-col items-center justify-center h-64 text-center">
+              <div className="flex flex-col items-center justify-center p-4 text-center h-64">
                 <span className="text-4xl mb-3">🤖</span>
-                <p className="text-sm text-gray-400 font-medium mb-3">Model not loaded</p>
+                <p className="text-sm text-gray-400 font-medium mb-1">AI Engine Offline</p>
+                <p className="text-[10px] text-gray-600 mb-4 max-w-[200px]">
+                  Select an engine in the header and load it onto WebGPU.
+                </p>
+                
+                {selectedModelInfo && (
+                  <div className="w-full bg-gray-950 border border-gray-900 rounded-md p-2.5 text-left mb-4 space-y-1 font-mono text-[9px]">
+                    <div className="flex justify-between border-b border-gray-900 pb-1 mb-1 text-gray-500">
+                      <span>FAMILY:</span>
+                      <span className="text-gray-400">{selectedModelInfo.family}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>DISK WEIGHT:</span>
+                      <span className="text-gray-400">{selectedModelInfo.size}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>ALLOC. VRAM:</span>
+                      <span className="text-gray-400">{selectedModelInfo.vram}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>VRAM TIER:</span>
+                      <span className="text-cyan-500">{selectedModelInfo.hardwareTier}</span>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={handleLoadModel}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-md transition-colors"
+                  className="w-full max-w-[200px] py-1.5 bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white text-[11px] font-mono font-medium rounded transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]"
                 >
-                  Load {modelId}
+                  LOAD SELECTED ENGINE
                 </button>
-                <p className="text-xs text-gray-600 mt-3 max-w-xs">
-                  This will download ~5GB. First load may take several minutes.
-                </p>
               </div>
             ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center">

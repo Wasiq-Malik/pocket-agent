@@ -1,8 +1,13 @@
-import { CreateMLCEngine, MLCEngine } from '@mlc-ai/web-llm';
+import { CreateMLCEngine, MLCEngine, prebuiltAppConfig } from '@mlc-ai/web-llm';
 
 let engine: MLCEngine | null = null;
 
 // Message types from main thread
+interface ChatCompletionMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 interface LoadModelMessage {
   type: 'load';
   modelId: string;
@@ -10,8 +15,10 @@ interface LoadModelMessage {
 
 interface ChatMessage {
   type: 'chat';
-  prompt: string;
+  messages: ChatCompletionMessage[];
   temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
 }
 
 interface ResetMessage {
@@ -53,8 +60,9 @@ async function loadModel(modelId: string) {
   try {
     postMessage({ type: 'progress', progress: 0, text: 'Initializing WebLLM...' });
 
-    // Use the model ID directly - WebLLM will use prebuiltAppConfig
+    // Use the model ID directly - WebLLM will use prebuiltAppConfig passed explicitly
     engine = await CreateMLCEngine(modelId, {
+      appConfig: prebuiltAppConfig,
       initProgressCallback: (progress) => {
         postMessage({
           type: 'progress',
@@ -76,7 +84,12 @@ async function loadModel(modelId: string) {
 }
 
 // Generate chat response with streaming
-async function chat(prompt: string, temperature = 0.7) {
+async function chat(
+  messages: ChatCompletionMessage[],
+  temperature = 0.6,
+  top_p = 0.95,
+  max_tokens = 2048
+) {
   if (!engine) {
     postMessage({ type: 'error', error: 'Model not loaded' });
     return;
@@ -84,8 +97,10 @@ async function chat(prompt: string, temperature = 0.7) {
 
   try {
     const stream = await engine.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
+      messages,
       temperature,
+      top_p,
+      max_tokens,
       stream: true,
     });
 
@@ -126,7 +141,12 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       break;
 
     case 'chat':
-      await chat(event.data.prompt, event.data.temperature);
+      await chat(
+        event.data.messages,
+        event.data.temperature,
+        event.data.top_p,
+        event.data.max_tokens
+      );
       break;
 
     case 'reset':
